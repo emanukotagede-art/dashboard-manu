@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — MA Nurul Ummah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: { paper:'#f6f1e7', ink:'#2b2118', earth:'#6b4f2a', olive:'#5b6b3a', clay:'#a65a3a', sand:'#e8dfcc', line:'#cdbfa3', muted:'#6f6350' },
+  fontFamily: { serif: ['"Source Serif 4"','Georgia','serif'] }
+}}};
+</script>
+<style>
+  *{border-radius:0!important}
+  body{background:#f6f1e7;color:#2b2118;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .tab{border:1px solid #cdbfa3;padding:.5rem .9rem;font-size:.875rem;white-space:nowrap;background:transparent}
+  .tab:hover{background:#e8dfcc}
+  .tab.on{background:#2b2118;color:#f6f1e7;border-color:#2b2118}
+  input,select{border:1px solid #cdbfa3;background:#fff;padding:.4rem .5rem;width:100%;margin-top:.15rem}
+  .btn{border:1px solid #2b2118;padding:.45rem .9rem;font-size:.875rem;background:#2b2118;color:#f6f1e7}
+  .btn.alt{background:transparent;color:#2b2118}
+</style>
+</head>
+<body>
+
+<header class="border-b-2 border-ink">
+  <div class="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="text-xs uppercase tracking-[.2em] text-muted">Madrasah Aliyah Nurul Ummah</p>
+      <h1 class="font-serif text-3xl md:text-4xl font-bold mt-1">Dashboard Transparansi</h1>
+      <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, dan prestasi. Terbuka untuk umum.</p>
+    </div>
+    <button class="btn alt" onclick="openAdmin()">Admin</button>
+  </div>
+</header>
+
+<nav class="border-b border-line">
+  <div id="nav" class="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto"></div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+  <div id="bar" class="mb-5"></div>
+  <div id="view"><p class="text-muted">Memuat data…</p></div>
+</main>
+
+<footer class="border-t border-line mt-10">
+  <div class="max-w-6xl mx-auto px-4 py-5 text-xs text-muted">
+    <span id="upd"></span>
+    Data pribadi (nama, NIK) tidak ditampilkan. Semua data ditampilkan dalam bentuk agregat.
+  </div>
+</footer>
+
+<!-- Modal admin -->
+<div id="adm" class="hidden fixed inset-0 bg-ink/50 z-50 overflow-y-auto">
+  <div class="bg-paper border-2 border-ink max-w-lg mx-auto my-8 p-5">
+    <div class="flex justify-between items-start mb-3">
+      <h2 class="font-serif text-xl font-bold">Input Data (Admin)</h2>
+      <button onclick="closeAdmin()" class="text-xl leading-none">&times;</button>
+    </div>
+    <label class="block text-sm mb-2">Token admin
+      <input id="admToken" type="password" autocomplete="off"></label>
+    <label class="block text-sm mb-3">Tab tujuan
+      <select id="admTab" onchange="buildForm()"></select></label>
+    <div id="admFields" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    <p id="admMsg" class="text-sm mt-3"></p>
+    <div class="mt-4 flex gap-2">
+      <button class="btn" onclick="submitAdmin()">Simpan baris</button>
+      <button class="btn alt" onclick="closeAdmin()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== KONFIGURASI: ganti dengan URL Web App dari GAS (akhiran /exec) ======
+const API_URL = 'https://script.google.com/macros/s/AKfycbyYVGIuPS0dyYbg6i8j5Zt1KHQELCJ5XQqkIE9nsPA9GjkjQf_lcu5UxEs3FyCRPpsNkg/exec';
+// ============================================================================
+
+const SCHEMA = {
+  Keuangan: ['Tahun Anggaran','Jenis','Kelompok','Uraian','Anggaran','Realisasi','Keterangan'],
+  GTK: ['ID GTK','Tahun Pelaporan','Kategori','Jenis Kelamin','Pendidikan Terakhir','Status Kepegawaian','Status Sertifikasi','Status Aktif'],
+  Siswa: ['ID Siswa','Tahun Pelajaran','Jenjang/Kelas','Rombongan Belajar','Jenis Kelamin','Desa/Kelurahan Domisili','Kecamatan Domisili','Status Siswa','Tahun Masuk'],
+  Aduan: ['ID Pengaduan','Tanggal Diterima','Kategori Pengaduan','Status Penanganan','Kanal Penerimaan','Tanggal Mulai Ditangani','Tanggal Penyelesaian','Periode Laporan','Durasi Penyelesaian (hari)'],
+  Sarpras: ['ID Fasilitas','Jumlah Unit','Nama Fasilitas','Kategori Fasilitas','Kondisi','Tahun Pengadaan','Status Penggunaan','Keterangan','Tanggal Pembaruan'],
+  Akademik: ['ID Akademik','Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'],
+  Prestasi: ['ID Prestasi','Tahun','Nama Prestasi','Tingkat','Bidang','Peringkat','Peraih','Penyelenggara','Tanggal']
+};
+const LISTS = {
+  Keuangan:{Jenis:['Pendapatan','Belanja'],Kelompok:['Pendapatan','Belanja Tidak Langsung','Belanja Langsung']},
+  GTK:{Kategori:['Guru','Tenaga Kependidikan'],'Jenis Kelamin':['L','P'],'Pendidikan Terakhir':['SMA/MA','D3','S1','S2','S3'],'Status Kepegawaian':['PNS','PPPK','GTY','GTT','PTY','PTT'],'Status Sertifikasi':['Sudah','Belum'],'Status Aktif':['Aktif','Tidak Aktif']},
+  Siswa:{'Jenjang/Kelas':['X','XI','XII'],'Jenis Kelamin':['L','P'],'Status Siswa':['Aktif','Lulus','Pindah','Keluar']},
+  Aduan:{'Kategori Pengaduan':['Layanan Akademik','Sarana Prasarana','Keuangan','Perilaku/Tata Tertib','Lainnya'],'Status Penanganan':['Diterima','Diproses','Selesai','Ditolak'],'Kanal Penerimaan':['Langsung','Telepon/WhatsApp','Kotak Saran','Website','Media Sosial']},
+  Sarpras:{'Kategori Fasilitas':['Ruang Kelas','Laboratorium','Perpustakaan','Ibadah','Asrama','Olahraga','Sanitasi','Kantor','Lainnya'],Kondisi:['Baik','Rusak Ringan','Rusak Berat'],'Status Penggunaan':['Digunakan','Tidak Digunakan','Dalam Perbaikan']},
+  Akademik:{Semester:['Ganjil','Genap']},
+  Prestasi:{Tingkat:['Madrasah','Kecamatan','Kabupaten/Kota','Provinsi','Nasional','Internasional'],Peraih:['Siswa','GTK','Madrasah']}
+};
+const AUTO = { Aduan: ['Periode Laporan','Durasi Penyelesaian (hari)'] };
+const NUMCOLS = ['Tahun Anggaran','Anggaran','Realisasi','Jumlah Unit','Tahun Pengadaan','Tahun Masuk','Tahun','Nilai','Tahun Pelaporan'];
+const PERIOD = { Keuangan:'Tahun Anggaran', GTK:'Tahun Pelaporan', Siswa:'Tahun Pelajaran', Aduan:'Periode Laporan', Sarpras:null, Akademik:'Tahun Pelajaran', Prestasi:'Tahun' };
+const TABS = ['Ringkasan','Keuangan','GTK','Siswa','Aduan','Sarpras','Akademik','Prestasi'];
+const LABEL = { GTK:'GTK', Sarpras:'Sarpras' };
+const PAL = ['#6b4f2a','#5b6b3a','#a65a3a','#b8975a','#7d8c6a','#3f3a30','#c9a27e','#8c8c7a'];
+
+const state = { data:null, tab:'Ringkasan', period:{}, updated:'' };
+let CH = [], Q = [];
+
+// ---------- util ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { if (typeof v === 'number') return v; const n = Number(String(v ?? '').replace(/[^\d.-]/g,'')); return isNaN(n) ? 0 : n; };
+const rp = n => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
+const nf = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
+const pct = (a,b) => b ? Math.round(a/b*100) + '%' : '0%';
+const short = v => v >= 1e9 ? (v/1e9).toFixed(1)+' M' : v >= 1e6 ? Math.round(v/1e6)+' jt' : nf(v);
+const sum = (rows,k) => rows.reduce((a,r) => a + num(r[k]), 0);
+const group = (rows,key,w) => { const m = {}; rows.forEach(r => { const k = String(r[key] ?? '').trim() || 'Tidak diisi'; m[k] = (m[k]||0) + (w ? num(r[w]) : 1); }); return m; };
+const entries = (m,sort='val',n=99) => { let e = Object.entries(m); e = sort==='key' ? e.sort((a,b)=>String(a[0]).localeCompare(String(b[0]))) : e.sort((a,b)=>b[1]-a[1]); return e.slice(0,n); };
+
+const card = (l,v,n='') => `<div class="border border-line bg-white/50 p-4"><div class="text-xs uppercase tracking-wider text-muted">${esc(l)}</div><div class="font-serif text-2xl font-semibold mt-1">${esc(v)}</div>${n?`<div class="text-xs text-muted mt-1">${esc(n)}</div>`:''}</div>`;
+const kpis = arr => `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${arr.join('')}</div>`;
+const box = (id,title,span='') => `<div class="border border-line bg-white/50 p-4 ${span}"><h3 class="font-serif font-semibold mb-3">${esc(title)}</h3><div class="relative h-64"><canvas id="${id}"></canvas></div></div>`;
+const grid = items => `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">${items.join('')}</div>`;
+const h2 = t => `<h2 class="font-serif text-xl font-bold border-b border-line pb-2 mb-4 mt-6">${esc(t)}</h2>`;
+
+function chart(id, type, labels, sets, opt = {}) {
+  Q.push(() => {
+    const el = document.getElementById(id); if (!el) return;
+    const dough = type === 'doughnut';
+    const ds = sets.map((s,i) => ({
+      label: s.label, data: s.data,
+      backgroundColor: dough ? labels.map((_,j)=>PAL[j%PAL.length]) : PAL[i%PAL.length],
+      borderColor: type==='line' ? PAL[i%PAL.length] : '#f6f1e7',
+      borderWidth: type==='line' ? 2 : 1, fill:false, tension:.2
+    }));
+    const vAxis = { beginAtZero:true, ticks: opt.money ? { callback:v=>short(v) } : { precision:0 } };
+    CH.push(new Chart(el, { type, data:{ labels, datasets: ds }, options: {
+      responsive:true, maintainAspectRatio:false, indexAxis: opt.h ? 'y' : 'x',
+      plugins:{ legend:{ display: dough || sets.length>1, position:'bottom', labels:{ boxWidth:10, font:{size:11} } } },
+      scales: dough ? {} : (opt.h ? { x:vAxis } : { y:vAxis })
+    }}));
+  });
+}
+function cg(id, type, map, label, opt = {}) {
+  const e = entries(map, opt.sort || 'val', opt.top || 99);
+  chart(id, type, e.map(x=>x[0]), [{ label, data:e.map(x=>x[1]) }], opt);
+}
+
+const MONEY = ['Anggaran','Realisasi'];
+function table(cols, rows) {
+  const cell = (r,c) => c==='% Realisasi' ? pct(num(r.Realisasi), num(r.Anggaran)) : MONEY.includes(c) ? rp(num(r[c])) : r[c];
+  return `<div class="overflow-x-auto border border-line bg-white/50"><table class="w-full text-sm"><thead class="bg-sand text-left"><tr>${cols.map(c=>`<th class="px-3 py-2 font-semibold whitespace-nowrap">${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-line">${cols.map(c=>`<td class="px-3 py-2 ${MONEY.includes(c)||c==='% Realisasi'?'text-right whitespace-nowrap':''}">${esc(cell(r,c))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+// ---------- data ----------
+const allRows = t => (state.data && state.data[t]) || [];
+const pval = (t,r) => { const k = PERIOD[t]; if (!k) return ''; const v = String(r[k] ?? ''); return t==='Aduan' ? v.slice(0,4) : v; };
+const periods = t => [...new Set(allRows(t).map(r=>pval(t,r)).filter(Boolean))].sort().reverse();
+const rowsFor = t => { const p = state.period[t]; return (!PERIOD[t] || !p || p==='Semua') ? allRows(t) : allRows(t).filter(r=>pval(t,r)===p); };
+const latest = t => { const p = periods(t)[0]; return p ? allRows(t).filter(r=>pval(t,r)===p) : allRows(t); };
+
+// ---------- views ----------
+const VIEWS = {
+  Ringkasan() {
+    const kw = latest('Keuangan'), sw = latest('Siswa'), gw = latest('GTK'), aw = latest('Aduan'), sp = allRows('Sarpras'), pr = allRows('Prestasi');
+    const pend = kw.filter(r=>r.Jenis==='Pendapatan'), bel = kw.filter(r=>r.Jenis==='Belanja');
+    const selesai = aw.filter(r=>/selesai/i.test(r['Status Penanganan'])).length;
+    const unit = sum(sp,'Jumlah Unit'), baik = sp.filter(r=>r.Kondisi==='Baik').reduce((a,r)=>a+num(r['Jumlah Unit']),0);
+    chart('c1','bar',['Pendapatan','Belanja'],[
+      {label:'Anggaran',data:[sum(pend,'Anggaran'),sum(bel,'Anggaran')]},
+      {label:'Realisasi',data:[sum(pend,'Realisasi'),sum(bel,'Realisasi')]}], {money:true});
+    return kpis([
+      card('Siswa aktif', nf(sw.filter(r=>r['Status Siswa']==='Aktif').length), periods('Siswa')[0]||''),
+      card('GTK aktif', nf(gw.filter(r=>r['Status Aktif']==='Aktif').length), periods('GTK')[0]||''),
+      card('Pendapatan terealisasi', rp(sum(pend,'Realisasi')), 'Tahun '+(periods('Keuangan')[0]||'-')),
+      card('Belanja terealisasi', rp(sum(bel,'Realisasi')), 'Tahun '+(periods('Keuangan')[0]||'-')),
+      card('Aduan selesai', pct(selesai,aw.length), nf(aw.length)+' aduan tahun '+(periods('Aduan')[0]||'-')),
+      card('Sarpras kondisi baik', pct(baik,unit), nf(unit)+' unit'),
+      card('Total prestasi', nf(pr.length), 'Seluruh tahun'),
+      card('Data diperbarui', state.updated ? new Date(state.updated).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-')
+    ]) + grid([box('c1','Anggaran vs Realisasi (APBM)')]);
+  },
+
+  Keuangan(rows) {
+    const pend = rows.filter(r=>r.Jenis==='Pendapatan'), bel = rows.filter(r=>r.Jenis==='Belanja');
+    const bl = bel.filter(r=>r.Kelompok==='Belanja Langsung');
+    const sel = sum(pend,'Realisasi') - sum(bel,'Realisasi');
+    const pe = entries(group(pend,'Uraian','Anggaran'),'val'), pl = pe.map(x=>x[0]);
+    const real = group(pend,'Uraian','Realisasi');
+    chart('k1','bar',pl,[{label:'Anggaran',data:pe.map(x=>x[1])},{label:'Realisasi',data:pl.map(k=>real[k]||0)}],{h:true,money:true});
+    cg('k2','doughnut',group(bel,'Kelompok','Realisasi'),'Realisasi belanja');
+    cg('k3','bar',group(bl,'Uraian','Realisasi'),'Realisasi',{h:true,money:true});
+    return kpis([
+      card('Pendapatan (anggaran)', rp(sum(pend,'Anggaran')), 'Realisasi '+rp(sum(pend,'Realisasi'))),
+      card('Belanja (anggaran)', rp(sum(bel,'Anggaran')), 'Realisasi '+rp(sum(bel,'Realisasi'))),
+      card('Serapan belanja', pct(sum(bel,'Realisasi'),sum(bel,'Anggaran'))),
+      card('Selisih realisasi', rp(sel), 'Pendapatan − belanja')
+    ]) + grid([box('k1','Pendapatan per sumber','md:col-span-2'), box('k2','Komposisi belanja'), box('k3','Belanja langsung per Standar Nasional Pendidikan')])
+      + h2('Rincian APBM') + table(['Jenis','Kelompok','Uraian','Anggaran','Realisasi','% Realisasi','Keterangan'], rows);
+  },
+
+  GTK(rows) {
+    cg('g1','doughnut',group(rows,'Kategori'),'Kategori');
+    cg('g2','doughnut',group(rows,'Jenis Kelamin'),'Jenis kelamin');
+    cg('g3','bar',group(rows,'Pendidikan Terakhir'),'Jumlah');
+    cg('g4','bar',group(rows,'Status Kepegawaian'),'Jumlah');
+    cg('g5','doughnut',group(rows,'Status Sertifikasi'),'Sertifikasi');
+    cg('g6','doughnut',group(rows,'Status Aktif'),'Status');
+    const guru = rows.filter(r=>r.Kategori==='Guru'), sert = guru.filter(r=>r['Status Sertifikasi']==='Sudah').length;
+    return kpis([
+      card('Total GTK', nf(rows.length)),
+      card('Guru', nf(guru.length)),
+      card('Tendik', nf(rows.length-guru.length)),
+      card('Guru tersertifikasi', pct(sert,guru.length), nf(sert)+' dari '+nf(guru.length))
+    ]) + grid([box('g1','Kategori'),box('g2','Jenis kelamin'),box('g3','Pendidikan terakhir'),box('g4','Status kepegawaian'),box('g5','Status sertifikasi'),box('g6','Status aktif')]);
+  },
+
+  Siswa(rows) {
+    cg('s1','bar',group(rows,'Jenjang/Kelas'),'Siswa',{sort:'key'});
+    cg('s2','doughnut',group(rows,'Jenis Kelamin'),'Jenis kelamin');
+    cg('s3','bar',group(rows,'Rombongan Belajar'),'Siswa',{sort:'key'});
+    cg('s4','doughnut',group(rows,'Status Siswa'),'Status');
+    cg('s5','bar',group(rows,'Kecamatan Domisili'),'Siswa',{h:true,top:8});
+    cg('s6','bar',group(rows,'Desa/Kelurahan Domisili'),'Siswa',{h:true,top:8});
+    cg('s7','bar',group(rows,'Tahun Masuk'),'Siswa',{sort:'key'});
+    const l = rows.filter(r=>r['Jenis Kelamin']==='L').length;
+    return kpis([
+      card('Total siswa', nf(rows.length)),
+      card('Laki-laki', nf(l)),
+      card('Perempuan', nf(rows.filter(r=>r['Jenis Kelamin']==='P').length)),
+      card('Rombel', nf(new Set(rows.map(r=>r['Rombongan Belajar'])).size))
+    ]) + grid([box('s1','Siswa per jenjang/kelas'),box('s2','Jenis kelamin'),box('s3','Siswa per rombongan belajar'),box('s4','Status siswa'),box('s5','Kecamatan domisili (8 teratas)'),box('s6','Desa/kelurahan domisili (8 teratas)'),box('s7','Tahun masuk','md:col-span-2')]);
+  },
+
+  Aduan(rows) {
+    const done = rows.filter(r=>/selesai/i.test(r['Status Penanganan']));
+    const dur = rows.map(r=>num(r['Durasi Penyelesaian (hari)'])).filter(d=>d>0);
+    const avg = dur.length ? (dur.reduce((a,b)=>a+b,0)/dur.length).toFixed(1) : '-';
+    cg('a1','bar',group(rows,'Kategori Pengaduan'),'Aduan',{h:true});
+    cg('a2','doughnut',group(rows,'Status Penanganan'),'Status');
+    cg('a3','doughnut',group(rows,'Kanal Penerimaan'),'Kanal');
+    const bln = {}; rows.forEach(r=>{ const k = String(r['Tanggal Diterima']||'').slice(0,7); if(k) bln[k]=(bln[k]||0)+1; });
+    cg('a4','line',bln,'Aduan masuk',{sort:'key'});
+    return kpis([
+      card('Total aduan', nf(rows.length)),
+      card('Selesai', pct(done.length,rows.length), nf(done.length)+' aduan'),
+      card('Dalam proses', nf(rows.length-done.length)),
+      card('Rata-rata durasi', avg==='-'?'-':avg+' hari', 'Sejak mulai ditangani')
+    ]) + grid([box('a1','Kategori pengaduan'),box('a2','Status penanganan'),box('a3','Kanal penerimaan'),box('a4','Aduan masuk per bulan')]);
+  },
+
+  Sarpras(rows) {
+    const unit = sum(rows,'Jumlah Unit'), baik = rows.filter(r=>r.Kondisi==='Baik').reduce((a,r)=>a+num(r['Jumlah Unit']),0);
+    cg('p1','bar',group(rows,'Kategori Fasilitas','Jumlah Unit'),'Unit',{h:true});
+    cg('p2','doughnut',group(rows,'Kondisi','Jumlah Unit'),'Unit');
+    cg('p3','doughnut',group(rows,'Status Penggunaan','Jumlah Unit'),'Unit');
+    cg('p4','bar',group(rows,'Tahun Pengadaan','Jumlah Unit'),'Unit',{sort:'key'});
+    return kpis([
+      card('Jenis fasilitas', nf(rows.length)),
+      card('Total unit', nf(unit)),
+      card('Kondisi baik', pct(baik,unit), nf(baik)+' unit'),
+      card('Perlu perbaikan', nf(unit-baik)+' unit')
+    ]) + grid([box('p1','Unit per kategori'),box('p2','Kondisi (unit)'),box('p3','Status penggunaan (unit)'),box('p4','Unit menurut tahun pengadaan')])
+      + h2('Daftar fasilitas') + table(['Nama Fasilitas','Kategori Fasilitas','Jumlah Unit','Kondisi','Tahun Pengadaan','Status Penggunaan','Keterangan','Tanggal Pembaruan'], rows);
+  },
+
+  Akademik(rows) {
+    const m = {}, c = {};
+    rows.forEach(r => { const k = r.Indikator + (r.Satuan ? ' ('+r.Satuan+')' : ''); m[k]=(m[k]||0)+num(r.Nilai); c[k]=(c[k]||0)+1; });
+    Object.keys(m).forEach(k => m[k] = Math.round(m[k]/c[k]*10)/10);
+    cg('ak1','bar',m,'Rata-rata',{h:true});
+    return kpis([card('Jumlah indikator', nf(Object.keys(m).length)), card('Jumlah data', nf(rows.length))])
+      + grid([box('ak1','Capaian per indikator','md:col-span-2')])
+      + h2('Rincian') + table(['Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'], rows);
+  },
+
+  Prestasi(rows) {
+    cg('r1','bar',group(rows,'Tingkat'),'Prestasi');
+    cg('r2','doughnut',group(rows,'Bidang'),'Bidang');
+    cg('r3','bar',group(rows,'Tahun'),'Prestasi',{sort:'key'});
+    const top = rows.filter(r=>/nasional|internasional|provinsi/i.test(r.Tingkat)).length;
+    return kpis([
+      card('Total prestasi', nf(rows.length)),
+      card('Tingkat provinsi ke atas', nf(top)),
+      card('Prestasi siswa', nf(rows.filter(r=>r.Peraih==='Siswa').length)),
+      card('Prestasi GTK', nf(rows.filter(r=>r.Peraih==='GTK').length))
+    ]) + grid([box('r1','Per tingkat'),box('r2','Per bidang'),box('r3','Per tahun','md:col-span-2')])
+      + h2('Daftar prestasi') + table(['Tahun','Nama Prestasi','Tingkat','Bidang','Peringkat','Peraih','Penyelenggara','Tanggal'], rows);
+  }
+};
+
+// ---------- render ----------
+function render() {
+  CH.forEach(c => c.destroy()); CH = []; Q = [];
+  const t = state.tab;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  // filter periode
+  const ps = periods(t);
+  $('#bar').innerHTML = ps.length && PERIOD[t] && t !== 'Ringkasan'
+    ? `<label class="text-sm">${esc(PERIOD[t])}: <select id="per" class="!w-auto inline-block" onchange="state.period[state.tab]=this.value;render()">
+        ${['Semua',...ps].map(p=>`<option ${p===state.period[t]?'selected':''}>${esc(p)}</option>`).join('')}</select></label>` : '';
+  const rows = t === 'Ringkasan' ? null : rowsFor(t);
+  $('#view').innerHTML = (t !== 'Ringkasan' && !rows.length)
+    ? '<p class="text-muted border border-line p-6 bg-white/50">Belum ada data untuk tab ini.</p>'
+    : VIEWS[t](rows);
+  Q.forEach(f => f());
+}
+
+function init() {
+  $('#nav').innerHTML = TABS.map(t => `<button class="tab" data-t="${t}" onclick="state.tab='${t}';render()">${esc(LABEL[t]||t)}</button>`).join('');
+  TABS.forEach(t => { if (PERIOD[t]) state.period[t] = periods(t)[0] || 'Semua'; });
+  $('#upd').textContent = state.updated ? 'Diperbarui: ' + new Date(state.updated).toLocaleString('id-ID') + '. ' : '';
+  render();
+}
+
+function showErr(m) { $('#view').innerHTML = `<div class="border border-clay p-6 bg-white/50"><p class="font-serif font-semibold text-clay mb-1">Data belum bisa dimuat</p><p class="text-sm">${esc(m)}</p></div>`; }
+
+async function load() {
+  if (API_URL.startsWith('GANTI')) { showErr('API_URL di index.html belum diisi. Tempel URL Web App dari Google Apps Script.'); $('#nav').innerHTML=''; return; }
+  try {
+    const r = await fetch(API_URL);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Gagal');
+    state.data = j.data; state.updated = j.updated || '';
+    init();
+  } catch (e) { showErr('Cek URL Web App & akses "Anyone". Detail: ' + e.message); }
+}
+
+// ---------- admin ----------
+function openAdmin() {
+  $('#admTab').innerHTML = Object.keys(SCHEMA).map(t=>`<option>${t}</option>`).join('');
+  $('#adm').classList.remove('hidden'); buildForm();
+}
+function closeAdmin() { $('#adm').classList.add('hidden'); $('#admMsg').textContent=''; }
+function buildForm() {
+  const t = $('#admTab').value, auto = AUTO[t] || [];
+  $('#admFields').innerHTML = SCHEMA[t].filter(c=>!auto.includes(c)).map(c => {
+    const l = (LISTS[t]||{})[c]; let inp;
+    if (l) inp = `<select name="${esc(c)}"><option value=""></option>${l.map(o=>`<option>${esc(o)}</option>`).join('')}</select>`;
+    else { const ty = /Tanggal/.test(c) ? 'date' : NUMCOLS.includes(c) ? 'number' : 'text'; inp = `<input name="${esc(c)}" type="${ty}" step="any">`; }
+    return `<label class="block text-sm">${esc(c)}${inp}</label>`;
+  }).join('');
+  if (auto.length) $('#admFields').insertAdjacentHTML('beforeend', `<p class="text-xs text-muted sm:col-span-2">Kolom ${esc(auto.join(' & '))} terisi otomatis.</p>`);
+}
+async function submitAdmin() {
+  const msg = $('#admMsg'), t = $('#admTab').value, row = {};
+  document.querySelectorAll('#admFields [name]').forEach(el => row[el.name] = el.value);
+  if (!$('#admToken').value) { msg.textContent = 'Isi token dulu.'; return; }
+  if (API_URL.startsWith('GANTI')) { msg.textContent = 'API_URL belum diisi.'; return; }
+  msg.textContent = 'Menyimpan…';
+  try {
+    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ token:$('#admToken').value, tab:t, row }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    msg.textContent = 'Tersimpan. Isi baris berikutnya atau tutup.';
+    buildForm(); load();
+  } catch (e) { msg.textContent = 'Gagal: ' + e.message; }
+}
+
+load();
+</script>
+</body>
+</html>
