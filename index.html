@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 tailwind.config = { theme: { extend: {
   colors: { paper:'#f6f1e7', ink:'#2b2118', earth:'#6b4f2a', olive:'#5b6b3a', clay:'#a65a3a', sand:'#e8dfcc', line:'#cdbfa3', muted:'#6f6350' },
@@ -24,6 +26,7 @@ tailwind.config = { theme: { extend: {
   input,select{border:1px solid #cdbfa3;background:#fff;padding:.4rem .5rem;width:100%;margin-top:.15rem}
   .btn{border:1px solid #2b2118;padding:.45rem .9rem;font-size:.875rem;background:#2b2118;color:#f6f1e7}
   .btn.alt{background:transparent;color:#2b2118}
+  #peta{position:relative;z-index:0}
 </style>
 </head>
 <body>
@@ -87,7 +90,8 @@ const SCHEMA = {
   Aduan: ['ID Pengaduan','Tanggal Diterima','Kategori Pengaduan','Status Penanganan','Kanal Penerimaan','Tanggal Mulai Ditangani','Tanggal Penyelesaian','Periode Laporan','Durasi Penyelesaian (hari)'],
   Sarpras: ['ID Fasilitas','Jumlah Unit','Nama Fasilitas','Kategori Fasilitas','Kondisi','Tahun Pengadaan','Status Penggunaan','Keterangan','Tanggal Pembaruan'],
   Akademik: ['ID Akademik','Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'],
-  Prestasi: ['ID Prestasi','Tahun','Nama Prestasi','Tingkat','Bidang','Peringkat','Peraih','Penyelenggara','Tanggal']
+  Prestasi: ['ID Prestasi','Tahun','Nama Prestasi','Tingkat','Bidang','Peringkat','Peraih','Penyelenggara','Tanggal'],
+  Wilayah: ['Kabupaten/Kota Domisili','Latitude','Longitude']
 };
 const LISTS = {
   Keuangan:{Jenis:['Pendapatan','Belanja'],Kelompok:['Pendapatan','Belanja Tidak Langsung','Belanja Langsung']},
@@ -99,11 +103,63 @@ const LISTS = {
   Prestasi:{Tingkat:['Madrasah','Kecamatan','Kabupaten/Kota','Provinsi','Nasional','Internasional'],Peraih:['Siswa','GTK','Madrasah']}
 };
 const AUTO = { Aduan: ['Periode Laporan','Durasi Penyelesaian (hari)'] };
-const NUMCOLS = ['Tahun Anggaran','Anggaran','Realisasi','Jumlah Unit','Tahun Pengadaan','Tahun Masuk','Tahun','Nilai','Tahun Pelaporan'];
+const NUMCOLS = ['Tahun Anggaran','Anggaran','Realisasi','Jumlah Unit','Tahun Pengadaan','Tahun Masuk','Tahun','Nilai','Tahun Pelaporan','Latitude','Longitude'];
 const PERIOD = { Keuangan:'Tahun Anggaran', GTK:'Tahun Pelaporan', Siswa:'Tahun Pelajaran', Aduan:'Periode Laporan', Sarpras:null, Akademik:'Tahun Pelajaran', Prestasi:'Tahun' };
 const TABS = ['Ringkasan','Keuangan','GTK','Siswa','Aduan','Sarpras','Akademik','Prestasi'];
 const LABEL = { GTK:'GTK', Sarpras:'Sarpras' };
 const PAL = ['#6b4f2a','#5b6b3a','#a65a3a','#b8975a','#7d8c6a','#3f3a30','#c9a27e','#8c8c7a'];
+
+// ---------- peta sebaran ----------
+const MIN_TAMPIL = 1; // wilayah dengan siswa < angka ini disembunyikan dari peta (naikkan jika perlu, misal 3)
+// Koordinat bawaan (kunci huruf kecil). Wilayah baru: tambah di tab "Wilayah" di Sheets, tanpa ubah kode.
+const COORDS = {
+  'bantul':[-7.888,110.328],'sleman':[-7.716,110.355],'kota yogyakarta':[-7.797,110.370],'gunungkidul':[-7.963,110.600],'kulon progo':[-7.830,110.160],
+  'pati':[-6.755,111.038],'klaten':[-7.706,110.606],'blora':[-6.969,111.417],'cilacap':[-7.727,109.015],'jepara':[-6.588,110.668],
+  'kebumen':[-7.668,109.652],'tegal':[-6.980,109.140],'kota tegal':[-6.869,109.137],'banjarnegara':[-7.400,109.690],'kudus':[-6.805,110.840],
+  'wonosobo':[-7.363,109.900],'kota semarang':[-6.990,110.420],'purworejo':[-7.710,110.010],'karanganyar':[-7.600,110.950],'boyolali':[-7.530,110.600],
+  'cirebon':[-6.730,108.550],'ciamis':[-7.330,108.350],'bekasi':[-6.240,107.000],
+  'jakarta barat':[-6.168,106.759],'jakarta utara':[-6.138,106.863],'jakarta pusat':[-6.186,106.834],
+  'kota medan':[3.595,98.672],'pelalawan':[0.395,101.840],'pasaman barat':[0.150,99.850],
+  'sintang':[0.065,111.490],'tabalong':[-2.170,115.380],'nabire':[-3.370,135.490],
+  'oku timur':[-3.990,104.760],'musi banyuasin':[-2.880,103.850],'musi rawas utara':[-2.700,102.900],
+  'bintan':[1.070,104.500],'batam':[1.130,104.050],'muaro jambi':[-1.600,103.650],'tebo':[-1.490,102.440],'bungo':[-1.490,102.120],'lampung utara':[-4.830,104.900]
+};
+let MAP = null;
+const coordOf = () => {
+  const m = Object.assign({}, COORDS);
+  allRows('Wilayah').forEach(r => {
+    const k = String(r['Kabupaten/Kota Domisili'] || '').trim().toLowerCase(), la = geo(r.Latitude), lo = geo(r.Longitude);
+    if (k && la && lo) m[k] = [la, lo];
+  });
+  return m;
+};
+function mapBlock(rows) {
+  const K = 'Kabupaten/Kota Domisili';
+  const cnt = group(rows.filter(r => String(r[K] || '').trim()), K);
+  const prov = {};
+  rows.forEach(r => { const k = String(r[K] || '').trim().toLowerCase(); if (k && r['Provinsi Domisili']) prov[k] = r['Provinsi Domisili']; });
+  const co = coordOf(), pts = [], miss = [];
+  Object.entries(cnt).forEach(([name, n]) => {
+    if (n < MIN_TAMPIL) return;
+    const c = co[name.toLowerCase()];
+    if (c) pts.push({ name, n, c, p: prov[name.toLowerCase()] || '' }); else miss.push(name + ' (' + n + ')');
+  });
+  if (!pts.length && !miss.length) return '';
+  Q.push(() => {
+    const el = document.getElementById('peta'); if (!el) return;
+    if (typeof L === 'undefined') { el.innerHTML = '<p class="p-4 text-sm text-muted">Peta gagal dimuat. Cek koneksi internet.</p>'; return; }
+    MAP = L.map('peta', { scrollWheelZoom: false }).setView([-2.5, 118], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 12, attribution: '&copy; OpenStreetMap' }).addTo(MAP);
+    if (!pts.length) return;
+    const mx = Math.max.apply(null, pts.map(p => p.n));
+    const grp = L.featureGroup(pts.map(p => L.circleMarker(p.c, { radius: 6 + 18 * Math.sqrt(p.n / mx), color: '#2b2118', weight: 1, fillColor: '#a65a3a', fillOpacity: 0.65 })
+      .bindPopup('<b>' + esc(p.name) + '</b><br>' + esc(p.p) + '<br>' + p.n + ' santri'))).addTo(MAP);
+    MAP.fitBounds(grp.getBounds().pad(0.15), { maxZoom: 9 });
+  });
+  return `<div class="border border-line bg-white/50 p-4 mb-5"><h3 class="font-serif font-semibold mb-3">Sebaran domisili santri (per kabupaten/kota)</h3><div id="peta" class="h-96"></div>`
+    + `<p class="text-xs text-muted mt-2">Ukuran lingkaran = jumlah santri. Klik lingkaran untuk detail.`
+    + (miss.length ? ` <span class="text-clay">Belum ada koordinat: ${esc(miss.join(', '))}. Tambahkan di tab Wilayah.</span>` : '') + `</p></div>`;
+}
 
 const state = { data:null, tab:'Ringkasan', period:{}, updated:'' };
 let CH = [], Q = [];
@@ -111,7 +167,16 @@ let CH = [], Q = [];
 // ---------- util ----------
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num = v => { if (typeof v === 'number') return v; const n = Number(String(v ?? '').replace(/[^\d.-]/g,'')); return isNaN(n) ? 0 : n; };
+const num = v => {
+  if (typeof v === 'number') return v;
+  let s = String(v ?? '').replace(/[^\d.,-]/g, '');
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, '');
+  else s = s.replace(',', '.');
+  const n = Number(s);
+  return isNaN(n) ? 0 : n;
+};
+const geo = v => { if (typeof v === 'number') return v; const n = Number(String(v ?? '').trim().replace(',', '.')); return isNaN(n) ? 0 : n; };
 const rp = n => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
 const nf = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
 const pct = (a,b) => b ? Math.round(a/b*100) + '%' : '0%';
@@ -157,7 +222,7 @@ function table(cols, rows) {
 
 // ---------- data ----------
 const allRows = t => (state.data && state.data[t]) || [];
-const pval = (t,r) => { const k = PERIOD[t]; if (!k) return ''; const v = String(r[k] ?? ''); return t==='Aduan' ? v.slice(0,4) : v; };
+const pval = (t,r) => { const k = PERIOD[t]; if (!k) return ''; const v = String(r[k] ?? ''); return t==='Aduan' ? (v.match(/\d{4}/) || [''])[0] : v; };
 const periods = t => [...new Set(allRows(t).map(r=>pval(t,r)).filter(Boolean))].sort().reverse();
 const rowsFor = t => { const p = state.period[t]; return (!PERIOD[t] || !p || p==='Semua') ? allRows(t) : allRows(t).filter(r=>pval(t,r)===p); };
 const latest = t => { const p = periods(t)[0]; return p ? allRows(t).filter(r=>pval(t,r)===p) : allRows(t); };
@@ -209,7 +274,8 @@ const VIEWS = {
     cg('g4','bar',group(rows,'Status Kepegawaian'),'Jumlah');
     cg('g5','doughnut',group(rows,'Status Sertifikasi'),'Sertifikasi');
     cg('g6','doughnut',group(rows,'Status Aktif'),'Status');
-    const guru = rows.filter(r=>r.Kategori==='Guru'), sert = guru.filter(r=>r['Status Sertifikasi']==='Sudah').length;
+    const low = v => String(v||'').trim().toLowerCase();
+    const guru = rows.filter(r=>low(r.Kategori)==='guru'), sert = guru.filter(r=>low(r['Status Sertifikasi'])==='sudah').length;
     return kpis([
       card('Total GTK', nf(rows.length)),
       card('Guru', nf(guru.length)),
@@ -226,13 +292,16 @@ const VIEWS = {
     cg('s5','bar',group(rows,'Kecamatan Domisili'),'Siswa',{h:true,top:8});
     cg('s6','bar',group(rows,'Desa/Kelurahan Domisili'),'Siswa',{h:true,top:8});
     cg('s7','bar',group(rows,'Tahun Masuk'),'Siswa',{sort:'key'});
+    cg('s8','bar',group(rows,'Provinsi Domisili'),'Siswa',{h:true,top:10});
+    cg('s9','bar',group(rows,'Kabupaten/Kota Domisili'),'Siswa',{h:true,top:10});
+    const peta = mapBlock(rows);
     const l = rows.filter(r=>r['Jenis Kelamin']==='Laki-laki').length;
     return kpis([
       card('Total siswa', nf(rows.length)),
       card('Laki-laki', nf(l)),
       card('Perempuan', nf(rows.filter(r=>r['Jenis Kelamin']==='Perempuan').length)),
       card('Rombel', nf(new Set(rows.map(r=>r['Rombongan Belajar'])).size))
-    ]) + grid([box('s1','Siswa per jenjang/kelas'),box('s2','Jenis kelamin'),box('s3','Siswa per rombongan belajar'),box('s4','Status siswa'),box('s5','Kecamatan domisili (8 teratas)'),box('s6','Desa/kelurahan domisili (8 teratas)'),box('s7','Tahun masuk','md:col-span-2')]);
+    ]) + peta + grid([box('s1','Siswa per jenjang/kelas'),box('s2','Jenis kelamin'),box('s3','Siswa per rombongan belajar'),box('s4','Status siswa'),box('s5','Kecamatan domisili (8 teratas)'),box('s6','Desa/kelurahan domisili (8 teratas)'),box('s7','Tahun masuk','md:col-span-2'),box('s8','Provinsi domisili (10 teratas)'),box('s9','Kabupaten/kota domisili (10 teratas)')]);
   },
 
   Aduan(rows) {
@@ -295,6 +364,7 @@ const VIEWS = {
 // ---------- render ----------
 function render() {
   CH.forEach(c => c.destroy()); CH = []; Q = [];
+  if (MAP) { MAP.remove(); MAP = null; }
   const t = state.tab;
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   // filter periode
