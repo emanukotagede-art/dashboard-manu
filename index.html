@@ -83,7 +83,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyYVGIuPS0dyYbg6i8j5Zt1
 const SCHEMA = {
   Keuangan: ['Tahun Anggaran','Jenis','Kelompok','Uraian','Anggaran','Realisasi','Keterangan'],
   GTK: ['ID GTK','Tahun Pelaporan','Kategori','Jenis Kelamin','Pendidikan Terakhir','Status Kepegawaian','Status Sertifikasi','Status Aktif'],
-  Siswa: ['ID Siswa','Tahun Pelajaran','Jenjang/Kelas','Rombongan Belajar','Jenis Kelamin','Desa/Kelurahan Domisili','Kecamatan Domisili','Status Siswa','Tahun Masuk'],
+  Siswa: ['ID Siswa','Tahun Pelajaran','Jenjang/Kelas','Rombongan Belajar','Jenis Kelamin','Desa/Kelurahan Domisili','Kecamatan Domisili','Status Siswa','Tahun Masuk','Kabupaten/Kota Domisili','Provinsi Domisili'],
   Aduan: ['ID Pengaduan','Tanggal Diterima','Kategori Pengaduan','Status Penanganan','Kanal Penerimaan','Tanggal Mulai Ditangani','Tanggal Penyelesaian','Periode Laporan','Durasi Penyelesaian (hari)'],
   Sarpras: ['ID Fasilitas','Jumlah Unit','Nama Fasilitas','Kategori Fasilitas','Kondisi','Tahun Pengadaan','Status Penggunaan','Keterangan','Tanggal Pembaruan'],
   Akademik: ['ID Akademik','Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'],
@@ -226,11 +226,11 @@ const VIEWS = {
     cg('s5','bar',group(rows,'Kecamatan Domisili'),'Siswa',{h:true,top:8});
     cg('s6','bar',group(rows,'Desa/Kelurahan Domisili'),'Siswa',{h:true,top:8});
     cg('s7','bar',group(rows,'Tahun Masuk'),'Siswa',{sort:'key'});
-    const l = rows.filter(r=>r['Jenis Kelamin']==='L').length;
+    const l = rows.filter(r=>r['Jenis Kelamin']==='Laki-laki').length;
     return kpis([
       card('Total siswa', nf(rows.length)),
       card('Laki-laki', nf(l)),
-      card('Perempuan', nf(rows.filter(r=>r['Jenis Kelamin']==='P').length)),
+      card('Perempuan', nf(rows.filter(r=>r['Jenis Kelamin']==='Perempuan').length)),
       card('Rombel', nf(new Set(rows.map(r=>r['Rombongan Belajar'])).size))
     ]) + grid([box('s1','Siswa per jenjang/kelas'),box('s2','Jenis kelamin'),box('s3','Siswa per rombongan belajar'),box('s4','Status siswa'),box('s5','Kecamatan domisili (8 teratas)'),box('s6','Desa/kelurahan domisili (8 teratas)'),box('s7','Tahun masuk','md:col-span-2')]);
   },
@@ -325,6 +325,11 @@ async function load() {
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Gagal');
     state.data = j.data; state.updated = j.updated || '';
+    // Seragamkan Jenis Kelamin: L / Laki-laki / laki → "Laki-laki"; P / Perempuan → "Perempuan"
+    ['Siswa','GTK'].forEach(t => (state.data[t]||[]).forEach(r => {
+      const v = String(r['Jenis Kelamin'] ?? '').trim().toLowerCase();
+      if (v) r['Jenis Kelamin'] = v[0]==='l' ? 'Laki-laki' : v[0]==='p' ? 'Perempuan' : r['Jenis Kelamin'];
+    }));
     init();
   } catch (e) { showErr('Cek URL Web App & akses "Anyone". Detail: ' + e.message); }
 }
