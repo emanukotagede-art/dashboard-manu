@@ -36,7 +36,7 @@ tailwind.config = { theme: { extend: {
     <div>
       <p class="text-xs uppercase tracking-[.2em] text-muted">Madrasah Aliyah Nurul Ummah</p>
       <h1 class="font-serif text-3xl md:text-4xl font-bold mt-1">Dashboard</h1>
-      <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, dan prestasi. Terbuka untuk umum.</p>
+      <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, prestasi, dan alumni. Terbuka untuk umum.</p>
     </div>
     <button class="btn alt" onclick="openAdmin()">Admin</button>
   </div>
@@ -253,6 +253,10 @@ const VIEWS = {
       card('Aduan selesai', pct(selesai,aw.length), nf(aw.length)+' aduan tahun '+(periods('Aduan')[0]||'-')),
       card('Sarpras kondisi baik', pct(baik,unit), nf(unit)+' unit'),
       card('Total prestasi', nf(pr.length), 'Seluruh tahun'),
+      card('Total alumni', nf(allRows('Alumni').length), 'Semua tahun lulus'),
+      card('Lulusan terakhir', nf(latest('Alumni').length), 'Tahun '+(periods('Alumni')[0]||'-')),
+      card('PT tujuan alumni', nf(new Set(allRows('Alumni').map(r=>String(r['Perguruan Tinggi']||'').trim()).filter(Boolean)).size)),
+      card('Prodi pilihan alumni', nf(new Set(allRows('Alumni').map(r=>String(r['Program Studi']||'').trim()).filter(Boolean)).size)),
       card('Data diperbarui', state.updated ? new Date(state.updated).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-')
     ]) + grid([box('c1','Anggaran vs Realisasi (APBM)')]);
   },
