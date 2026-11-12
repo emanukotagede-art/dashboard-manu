@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — MA Nurul Ummah</title>
+<title>Dashboard Transparansi — MA Nurul Ummah</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&display=swap" rel="stylesheet">
@@ -26,7 +26,7 @@ tailwind.config = { theme: { extend: {
   input,select{border:1px solid #cdbfa3;background:#fff;padding:.4rem .5rem;width:100%;margin-top:.15rem}
   .btn{border:1px solid #2b2118;padding:.45rem .9rem;font-size:.875rem;background:#2b2118;color:#f6f1e7}
   .btn.alt{background:transparent;color:#2b2118}
-  #peta{position:relative;z-index:0}
+  #peta,#peta2{position:relative;z-index:0}
 </style>
 </head>
 <body>
@@ -35,7 +35,7 @@ tailwind.config = { theme: { extend: {
   <div class="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-3">
     <div>
       <p class="text-xs uppercase tracking-[.2em] text-muted">Madrasah Aliyah Nurul Ummah</p>
-      <h1 class="font-serif text-3xl md:text-4xl font-bold mt-1">Dashboard</h1>
+      <h1 class="font-serif text-3xl md:text-4xl font-bold mt-1">Dashboard Transparansi</h1>
       <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, dan prestasi. Terbuka untuk umum.</p>
     </div>
     <button class="btn alt" onclick="openAdmin()">Admin</button>
@@ -91,7 +91,8 @@ const SCHEMA = {
   Sarpras: ['ID Fasilitas','Jumlah Unit','Nama Fasilitas','Kategori Fasilitas','Kondisi','Tahun Pengadaan','Status Penggunaan','Keterangan','Tanggal Pembaruan'],
   Akademik: ['ID Akademik','Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'],
   Prestasi: ['ID Prestasi','Tahun','Nama Prestasi','Tingkat','Bidang','Peringkat','Peraih','Penyelenggara','Tanggal'],
-  Wilayah: ['Kabupaten/Kota Domisili','Latitude','Longitude']
+  Wilayah: ['Kabupaten/Kota Domisili','Latitude','Longitude'],
+  Alumni: ['ID Alumni','Tahun Kelulusan','Program Studi','Perguruan Tinggi','Jalur Penerimaan','Kabupaten/Kota Perguruan Tinggi','Provinsi Perguruan Tinggi']
 };
 const LISTS = {
   Keuangan:{Jenis:['Pendapatan','Belanja'],Kelompok:['Pendapatan','Belanja Tidak Langsung','Belanja Langsung']},
@@ -104,8 +105,8 @@ const LISTS = {
 };
 const AUTO = { Aduan: ['Periode Laporan','Durasi Penyelesaian (hari)'] };
 const NUMCOLS = ['Tahun Anggaran','Anggaran','Realisasi','Jumlah Unit','Tahun Pengadaan','Tahun Masuk','Tahun','Nilai','Tahun Pelaporan','Latitude','Longitude'];
-const PERIOD = { Keuangan:'Tahun Anggaran', GTK:'Tahun Pelaporan', Siswa:'Tahun Pelajaran', Aduan:'Periode Laporan', Sarpras:null, Akademik:'Tahun Pelajaran', Prestasi:'Tahun' };
-const TABS = ['Ringkasan','Keuangan','GTK','Siswa','Aduan','Sarpras','Akademik','Prestasi'];
+const PERIOD = { Keuangan:'Tahun Anggaran', GTK:'Tahun Pelaporan', Siswa:'Tahun Pelajaran', Aduan:'Periode Laporan', Sarpras:null, Akademik:'Tahun Pelajaran', Prestasi:'Tahun', Alumni:'Tahun Kelulusan' };
+const TABS = ['Ringkasan','Keuangan','GTK','Siswa','Aduan','Sarpras','Akademik','Prestasi','Alumni'];
 const LABEL = { GTK:'GTK', Sarpras:'Sarpras' };
 const PAL = ['#6b4f2a','#5b6b3a','#a65a3a','#b8975a','#7d8c6a','#3f3a30','#c9a27e','#8c8c7a'];
 
@@ -122,9 +123,16 @@ const COORDS = {
   'kota medan':[3.595,98.672],'pelalawan':[0.395,101.840],'pasaman barat':[0.150,99.850],
   'sintang':[0.065,111.490],'tabalong':[-2.170,115.380],'nabire':[-3.370,135.490],
   'oku timur':[-3.990,104.760],'musi banyuasin':[-2.880,103.850],'musi rawas utara':[-2.700,102.900],
-  'bintan':[1.070,104.500],'batam':[1.130,104.050],'muaro jambi':[-1.600,103.650],'tebo':[-1.490,102.440],'bungo':[-1.490,102.120],'lampung utara':[-4.830,104.900]
+  'bintan':[1.070,104.500],'batam':[1.130,104.050],'muaro jambi':[-1.600,103.650],'tebo':[-1.490,102.440],'bungo':[-1.490,102.120],'lampung utara':[-4.830,104.900],
+  // kota kampus umum
+  'kota surakarta':[-7.567,110.817],'sukoharjo':[-7.680,110.840],'kota surabaya':[-7.258,112.752],'kota malang':[-7.980,112.630],
+  'kota bandung':[-6.918,107.619],'sumedang':[-6.860,107.924],'kota bogor':[-6.595,106.817],'kota depok':[-6.403,106.794],
+  'jakarta selatan':[-6.262,106.811],'jakarta timur':[-6.225,106.900],'kota tangerang selatan':[-6.289,106.718],
+  'kota magelang':[-7.480,110.218],'kota salatiga':[-7.331,110.508],'banyumas':[-7.424,109.230],
+  'kota palembang':[-2.976,104.775],'kota padang':[-0.947,100.417],'kota pekanbaru':[0.507,101.448],'kota jambi':[-1.610,103.613],
+  'kota makassar':[-5.148,119.433],'kota banda aceh':[5.548,95.324]
 };
-let MAP = null;
+let MAPS = [];
 const coordOf = () => {
   const m = Object.assign({}, COORDS);
   allRows('Wilayah').forEach(r => {
@@ -133,11 +141,10 @@ const coordOf = () => {
   });
   return m;
 };
-function mapBlock(rows) {
-  const K = 'Kabupaten/Kota Domisili';
+function mapBlock(rows, K = 'Kabupaten/Kota Domisili', PK = 'Provinsi Domisili', id = 'peta', title = 'Sebaran domisili santri (per kabupaten/kota)', unit = 'santri') {
   const cnt = group(rows.filter(r => String(r[K] || '').trim()), K);
   const prov = {};
-  rows.forEach(r => { const k = String(r[K] || '').trim().toLowerCase(); if (k && r['Provinsi Domisili']) prov[k] = r['Provinsi Domisili']; });
+  rows.forEach(r => { const k = String(r[K] || '').trim().toLowerCase(); if (k && r[PK]) prov[k] = r[PK]; });
   const co = coordOf(), pts = [], miss = [];
   Object.entries(cnt).forEach(([name, n]) => {
     if (n < MIN_TAMPIL) return;
@@ -146,18 +153,19 @@ function mapBlock(rows) {
   });
   if (!pts.length && !miss.length) return '';
   Q.push(() => {
-    const el = document.getElementById('peta'); if (!el) return;
+    const el = document.getElementById(id); if (!el) return;
     if (typeof L === 'undefined') { el.innerHTML = '<p class="p-4 text-sm text-muted">Peta gagal dimuat. Cek koneksi internet.</p>'; return; }
-    MAP = L.map('peta', { scrollWheelZoom: false }).setView([-2.5, 118], 4);
+    const MAP = L.map(id, { scrollWheelZoom: false }).setView([-2.5, 118], 4);
+    MAPS.push(MAP);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 12, attribution: '&copy; OpenStreetMap' }).addTo(MAP);
     if (!pts.length) return;
     const mx = Math.max.apply(null, pts.map(p => p.n));
     const grp = L.featureGroup(pts.map(p => L.circleMarker(p.c, { radius: 6 + 18 * Math.sqrt(p.n / mx), color: '#2b2118', weight: 1, fillColor: '#a65a3a', fillOpacity: 0.65 })
-      .bindPopup('<b>' + esc(p.name) + '</b><br>' + esc(p.p) + '<br>' + p.n + ' santri'))).addTo(MAP);
+      .bindPopup('<b>' + esc(p.name) + '</b><br>' + esc(p.p) + '<br>' + p.n + ' ' + unit))).addTo(MAP);
     MAP.fitBounds(grp.getBounds().pad(0.15), { maxZoom: 9 });
   });
-  return `<div class="border border-line bg-white/50 p-4 mb-5"><h3 class="font-serif font-semibold mb-3">Sebaran domisili santri (per kabupaten/kota)</h3><div id="peta" class="h-96"></div>`
-    + `<p class="text-xs text-muted mt-2">Ukuran lingkaran = jumlah santri. Klik lingkaran untuk detail.`
+  return `<div class="border border-line bg-white/50 p-4 mb-5"><h3 class="font-serif font-semibold mb-3">${esc(title)}</h3><div id="${id}" class="h-96"></div>`
+    + `<p class="text-xs text-muted mt-2">Ukuran lingkaran = jumlah ${unit}. Klik lingkaran untuk detail.`
     + (miss.length ? ` <span class="text-clay">Belum ada koordinat: ${esc(miss.join(', '))}. Tambahkan di tab Wilayah.</span>` : '') + `</p></div>`;
 }
 
@@ -346,6 +354,37 @@ const VIEWS = {
       + h2('Rincian') + table(['Tahun Pelajaran','Semester','Jenjang/Kelas','Indikator','Nilai','Satuan','Keterangan'], rows);
   },
 
+  Alumni(rows) {
+    const TH = 'Tahun Kelulusan', PS = 'Program Studi', PT = 'Perguruan Tinggi', J = 'Jalur Penerimaan';
+    const KP = 'Kabupaten/Kota Perguruan Tinggi', PP = 'Provinsi Perguruan Tinggi';
+    const blank = v => !String(v ?? '').trim();
+    const cPT = group(rows,PT), cPS = group(rows,PS), cJ = group(rows,J);
+    cg('al1','bar',group(rows,TH),'Alumni',{sort:'key'});
+    cg('al2','doughnut',cJ,'Jalur');
+    cg('al3','bar',cPT,'Alumni',{h:true,top:10});
+    cg('al4','bar',cPS,'Alumni',{h:true,top:10});
+    cg('al5','bar',group(rows,PP),'Alumni',{h:true,top:10});
+    const peta = mapBlock(rows, KP, PP, 'peta2', 'Sebaran lokasi perguruan tinggi alumni', 'alumni');
+    const lbl = v => String(v ?? '').trim() || 'Tidak diisi';
+    const n = rows.length;
+    const ptRows = entries(cPT,'val').map(([k,c]) => ({ [PT]:k, Jumlah:c, '%':pct(c,n),
+      'Jumlah Prodi': new Set(rows.filter(r=>lbl(r[PT])===k).map(r=>lbl(r[PS]))).size }));
+    const psRows = entries(cPS,'val').map(([k,c]) => ({ [PS]:k, Jumlah:c, '%':pct(c,n) }));
+    const years = Object.keys(group(rows,TH)).sort(), jal = Object.keys(cJ).sort();
+    const xRows = years.map(y => { const o = { [TH]:y }; let t = 0;
+      jal.forEach(j => { const c = rows.filter(r=>lbl(r[TH])===y && lbl(r[J])===j).length; o[j]=c; t+=c; });
+      o.Total = t; return o; });
+    return kpis([
+      card('Total alumni', nf(n)),
+      card('Perguruan tinggi', nf(rows.filter(r=>!blank(r[PT])).length ? new Set(rows.filter(r=>!blank(r[PT])).map(r=>lbl(r[PT]))).size : 0)),
+      card('Program studi', nf(rows.filter(r=>!blank(r[PS])).length ? new Set(rows.filter(r=>!blank(r[PS])).map(r=>lbl(r[PS]))).size : 0)),
+      card('Jalur terisi', pct(rows.filter(r=>!blank(r[J])).length, n), 'Sisanya belum diisi')
+    ]) + peta + grid([box('al1','Alumni per tahun kelulusan'),box('al2','Jalur penerimaan'),box('al3','Perguruan tinggi (10 teratas)'),box('al4','Program studi (10 teratas)'),box('al5','Provinsi perguruan tinggi (10 teratas)')])
+      + h2('Rekap per perguruan tinggi') + table([PT,'Jumlah','%','Jumlah Prodi'], ptRows)
+      + h2('Rekap per program studi') + table([PS,'Jumlah','%'], psRows)
+      + h2('Rekap tahun kelulusan × jalur penerimaan') + table([TH,...jal,'Total'], xRows);
+  },
+
   Prestasi(rows) {
     cg('r1','bar',group(rows,'Tingkat'),'Prestasi');
     cg('r2','doughnut',group(rows,'Bidang'),'Bidang');
@@ -364,7 +403,7 @@ const VIEWS = {
 // ---------- render ----------
 function render() {
   CH.forEach(c => c.destroy()); CH = []; Q = [];
-  if (MAP) { MAP.remove(); MAP = null; }
+  MAPS.forEach(m => m.remove()); MAPS = [];
   const t = state.tab;
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   // filter periode
@@ -382,6 +421,7 @@ function render() {
 function init() {
   $('#nav').innerHTML = TABS.map(t => `<button class="tab" data-t="${t}" onclick="state.tab='${t}';render()">${esc(LABEL[t]||t)}</button>`).join('');
   TABS.forEach(t => { if (PERIOD[t]) state.period[t] = periods(t)[0] || 'Semua'; });
+  state.period.Alumni = 'Semua'; // alumni: tampil semua tahun lulus
   $('#upd').textContent = state.updated ? 'Diperbarui: ' + new Date(state.updated).toLocaleString('id-ID') + '. ' : '';
   render();
 }
