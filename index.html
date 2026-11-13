@@ -3,29 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — MA Nurul Ummah</title>
+<title>Dashboard Transparansi — MA Nurul Ummah</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 tailwind.config = { theme: { extend: {
-  colors: { paper:'#f6f1e7', ink:'#2b2118', earth:'#6b4f2a', olive:'#5b6b3a', clay:'#a65a3a', sand:'#e8dfcc', line:'#cdbfa3', muted:'#6f6350' },
-  fontFamily: { serif: ['"Source Serif 4"','Georgia','serif'] }
+  // warna & font = token manu.sch.id (assets/style.css)
+  colors: { paper:'#faf8f5', ink:'#1f1c19', muted:'#6b6459', faint:'#a49b8c', line:'#e6e0d6', accent:'#a8501f', sand:'#f3e6dc', clay:'#a8501f', earth:'#6b4f2a', olive:'#5b6b3a' },
+  fontFamily: { serif: ['"Source Serif 4"','ui-serif','Georgia','serif'], sans: ['Inter','ui-sans-serif','system-ui','sans-serif'], mono: ['"JetBrains Mono"','monospace'] }
 }}};
 </script>
 <style>
+  :root{--font-display:'Source Serif 4',ui-serif,Georgia,serif;--font-body:'Inter',ui-sans-serif,system-ui,sans-serif;--font-mono:'JetBrains Mono',monospace;
+    --color-paper:#faf8f5;--color-ink:#1f1c19;--color-ink-soft:#6b6459;--color-ink-faint:#a49b8c;--color-line:#e6e0d6;--color-accent:#a8501f;--color-accent-soft:#f3e6dc}
   *{border-radius:0!important}
-  body{background:#f6f1e7;color:#2b2118;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .tab{border:1px solid #cdbfa3;padding:.5rem .9rem;font-size:.875rem;white-space:nowrap;background:transparent}
-  .tab:hover{background:#e8dfcc}
-  .tab.on{background:#2b2118;color:#f6f1e7;border-color:#2b2118}
-  input,select{border:1px solid #cdbfa3;background:#fff;padding:.4rem .5rem;width:100%;margin-top:.15rem}
-  .btn{border:1px solid #2b2118;padding:.45rem .9rem;font-size:.875rem;background:#2b2118;color:#f6f1e7}
-  .btn.alt{background:transparent;color:#2b2118}
+  body{font-family:var(--font-body);background:var(--color-paper);color:var(--color-ink);overflow-x:clip}
+  h1,h2,.display{font-family:var(--font-display);font-style:normal}
+  .mono{font-family:var(--font-mono)}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-ink-faint)}
+  .eyebrow.accent{color:var(--color-accent)}
+  .tab{border:1px solid var(--color-line);padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:transparent;color:var(--color-ink-soft);transition:background-color .15s ease-out,color .15s ease-out}
+  .tab:hover{background:var(--color-accent-soft);color:var(--color-ink)}
+  .tab.on{background:var(--color-ink);color:var(--color-paper);border-color:var(--color-ink)}
+  input,select{border:1px solid var(--color-line);background:#fff;padding:.4rem .5rem;width:100%;margin-top:.15rem;font-family:var(--font-body)}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:12px 20px;min-height:44px;border:1px solid var(--color-ink);background:var(--color-ink);color:var(--color-paper);transition:background-color .15s ease-out,border-color .15s ease-out}
+  .btn:hover{background:var(--color-accent);border-color:var(--color-accent)}
+  .btn.alt{background:transparent;color:var(--color-ink)}
+  .btn.alt:hover{background:var(--color-accent-soft);border-color:var(--color-ink)}
   #peta,#peta2{position:relative;z-index:0}
 </style>
 </head>
@@ -34,9 +43,9 @@ tailwind.config = { theme: { extend: {
 <header class="border-b-2 border-ink">
   <div class="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-      <p class="text-xs uppercase tracking-[.2em] text-muted">Madrasah Aliyah Nurul Ummah</p>
-      <h1 class="font-serif text-3xl md:text-4xl font-bold mt-1">Dashboard</h1>
-      <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, prestasi, dan alumni. Terbuka untuk umum.</p>
+      <p class="eyebrow accent">Madrasah Aliyah Nurul Ummah</p>
+      <h1 class="font-serif text-3xl md:text-4xl font-bold mt-2 tracking-tight">Dashboard <em class="text-accent font-medium">Transparansi</em></h1>
+      <p class="text-sm text-muted mt-1">Data keuangan, GTK, siswa, aduan, sarpras, akademik, dan prestasi. Terbuka untuk umum.</p>
     </div>
     <button class="btn alt" onclick="openAdmin()">Admin</button>
   </div>
@@ -108,7 +117,8 @@ const NUMCOLS = ['Tahun Anggaran','Anggaran','Realisasi','Jumlah Unit','Tahun Pe
 const PERIOD = { Keuangan:'Tahun Anggaran', GTK:'Tahun Pelaporan', Siswa:'Tahun Pelajaran', Aduan:'Periode Laporan', Sarpras:null, Akademik:'Tahun Pelajaran', Prestasi:'Tahun', Alumni:'Tahun Kelulusan' };
 const TABS = ['Ringkasan','Keuangan','GTK','Siswa','Aduan','Sarpras','Akademik','Prestasi','Alumni'];
 const LABEL = { GTK:'GTK', Sarpras:'Sarpras' };
-const PAL = ['#6b4f2a','#5b6b3a','#a65a3a','#b8975a','#7d8c6a','#3f3a30','#c9a27e','#8c8c7a'];
+const PAL = ['#a8501f','#1f1c19','#6b6459','#c98a5e','#5b6b3a','#a49b8c','#7a3a14','#d9b99b'];
+if (window.Chart && Chart.defaults) { Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui, sans-serif"; Chart.defaults.color = '#6b6459'; Chart.defaults.borderColor = '#e6e0d6'; }
 
 // ---------- peta sebaran ----------
 const MIN_TAMPIL = 1; // wilayah dengan siswa < angka ini disembunyikan dari peta (naikkan jika perlu, misal 3)
@@ -160,7 +170,7 @@ function mapBlock(rows, K = 'Kabupaten/Kota Domisili', PK = 'Provinsi Domisili',
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 12, attribution: '&copy; OpenStreetMap' }).addTo(MAP);
     if (!pts.length) return;
     const mx = Math.max.apply(null, pts.map(p => p.n));
-    const grp = L.featureGroup(pts.map(p => L.circleMarker(p.c, { radius: 6 + 18 * Math.sqrt(p.n / mx), color: '#2b2118', weight: 1, fillColor: '#a65a3a', fillOpacity: 0.65 })
+    const grp = L.featureGroup(pts.map(p => L.circleMarker(p.c, { radius: 6 + 18 * Math.sqrt(p.n / mx), color: '#1f1c19', weight: 1, fillColor: '#a8501f', fillOpacity: 0.65 })
       .bindPopup('<b>' + esc(p.name) + '</b><br>' + esc(p.p) + '<br>' + p.n + ' ' + unit))).addTo(MAP);
     MAP.fitBounds(grp.getBounds().pad(0.15), { maxZoom: 9 });
   });
@@ -193,7 +203,7 @@ const sum = (rows,k) => rows.reduce((a,r) => a + num(r[k]), 0);
 const group = (rows,key,w) => { const m = {}; rows.forEach(r => { const k = String(r[key] ?? '').trim() || 'Tidak diisi'; m[k] = (m[k]||0) + (w ? num(r[w]) : 1); }); return m; };
 const entries = (m,sort='val',n=99) => { let e = Object.entries(m); e = sort==='key' ? e.sort((a,b)=>String(a[0]).localeCompare(String(b[0]))) : e.sort((a,b)=>b[1]-a[1]); return e.slice(0,n); };
 
-const card = (l,v,n='') => `<div class="border border-line bg-white/50 p-4"><div class="text-xs uppercase tracking-wider text-muted">${esc(l)}</div><div class="font-serif text-2xl font-semibold mt-1">${esc(v)}</div>${n?`<div class="text-xs text-muted mt-1">${esc(n)}</div>`:''}</div>`;
+const card = (l,v,n='') => `<div class="border border-line bg-white/50 p-4"><div class="eyebrow">${esc(l)}</div><div class="font-serif text-2xl font-semibold mt-1">${esc(v)}</div>${n?`<div class="text-xs text-muted mt-1">${esc(n)}</div>`:''}</div>`;
 const kpis = arr => `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${arr.join('')}</div>`;
 const box = (id,title,span='') => `<div class="border border-line bg-white/50 p-4 ${span}"><h3 class="font-serif font-semibold mb-3">${esc(title)}</h3><div class="relative h-64"><canvas id="${id}"></canvas></div></div>`;
 const grid = items => `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">${items.join('')}</div>`;
@@ -206,7 +216,7 @@ function chart(id, type, labels, sets, opt = {}) {
     const ds = sets.map((s,i) => ({
       label: s.label, data: s.data,
       backgroundColor: dough ? labels.map((_,j)=>PAL[j%PAL.length]) : PAL[i%PAL.length],
-      borderColor: type==='line' ? PAL[i%PAL.length] : '#f6f1e7',
+      borderColor: type==='line' ? PAL[i%PAL.length] : '#faf8f5',
       borderWidth: type==='line' ? 2 : 1, fill:false, tension:.2
     }));
     const vAxis = { beginAtZero:true, ticks: opt.money ? { callback:v=>short(v) } : { precision:0 } };
